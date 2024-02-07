@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reviews-queries-deployment
+spec:
+  selector:
+    matchLabels:
+      app: reviews-queries
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: reviews-queries
+    spec:
+      containers:
+      - name: reviews-queries-container
+        image: 1151386/reviews-queries
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        - containerPort: 5672
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reviews-queries-service
+spec:
+  selector:
+    app: reviews-queries
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: 5672
+    nodePort: 30018
+  - name: http
+    port: 8080
+    targetPort: 8080
+    nodePort: 30019
+  type: NodePort
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: reviews-queries-service-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: reviews-queries
+  minReplicas: 2
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
